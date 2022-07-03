@@ -1,13 +1,10 @@
 """Tests for the LVI implementation."""
-from typing import Mapping, Tuple, Dict, Any
+from typing import Any, Dict, Tuple
 
 import numpy as np
-from mdp_dp_rl.algorithms.dp.dp_analytic import DPAnalytic
 from mdp_dp_rl.processes.mdp import MDP
-from mdp_dp_rl.utils.generic_typevars import S, A
 
 from icsoc_2022.lvi import value_iteration
-from icsoc_2022.custom_types import State, Action
 
 
 def build_chain_mdp(n: int, gamma: float = 0.99) -> MDP:
@@ -25,11 +22,11 @@ def build_chain_mdp(n: int, gamma: float = 0.99) -> MDP:
         out_transitions[LEFT] = ({max(0, i - 1): 1.0}, 0.0)
 
         # add transitions with action "right"
-        out_transitions[RIGHT] = ({i + 1: 1.0}, 1.0 if i == n-2 else 0.0)
+        out_transitions[RIGHT] = ({i + 1: 1.0}, 1.0 if i == n - 2 else 0.0)
 
         info[i] = out_transitions
 
-    info[n-1] = {NOP: ({n-1: 1.0}, 0.0)}
+    info[n - 1] = {NOP: ({n - 1: 1.0}, 0.0)}
     return MDP(info, gamma)
 
 
