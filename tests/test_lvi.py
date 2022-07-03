@@ -7,7 +7,7 @@ from mdp_dp_rl.processes.mdp import MDP
 from mdp_dp_rl.utils.generic_typevars import S, A
 
 from icsoc_2022.lvi import value_iteration
-from icsoc_2022.types import State, Action
+from icsoc_2022.custom_types import State, Action
 
 
 def build_chain_mdp(n: int, gamma: float = 0.99) -> MDP:

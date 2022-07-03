@@ -15,6 +15,7 @@ setup(name='icsoc-2022',
             "websockets",
             "paho-mqtt",
             "requests",
+            "logaut",
             "mdp_dp_rl @ git+https://github.com/luusi/mdp-dp-rl.git#egg=mdp_dp_rl"
       ]
 )
