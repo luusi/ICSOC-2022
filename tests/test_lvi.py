@@ -4,7 +4,8 @@ from typing import Any, Dict, Tuple
 import numpy as np
 from mdp_dp_rl.processes.mdp import MDP
 
-from icsoc_2022.lvi import value_iteration
+from icsoc_2022.lvi import lexicographic_value_iteration, value_iteration
+from icsoc_2022.momdp import MOMDP
 
 
 def build_chain_mdp(n: int, gamma: float = 0.99) -> MDP:
@@ -31,7 +32,7 @@ def build_chain_mdp(n: int, gamma: float = 0.99) -> MDP:
 
 
 def test_value_iteration() -> None:
-    """Run the tests for LVI."""
+    """Run the tests for value iteration."""
     n = 10
     gamma = 0.99
     mdp = build_chain_mdp(n)
@@ -39,3 +40,22 @@ def test_value_iteration() -> None:
     value_function = value_iteration(mdp)
     for i in range(n - 1):
         assert np.allclose(value_function[i], gamma ** (n - i - 2))
+
+
+def test_lvi() -> None:
+    """Run the tests for LVI."""
+    data = {
+        0: {"a": ({1: 1.0}, (1.0, 0.0)), "b": ({2: 1.0}, (0.0, 1.0))},
+        1: {"a": ({1: 1.0}, (0.0, 0.0)), "b": ({1: 1.0}, (0.0, 1.0))},
+        2: {"a": ({2: 1.0}, (0.0, 0.0)), "b": ({2: 1.0}, (0.0, 1.0))},
+    }
+
+    momdp = MOMDP(data, 0.9)
+    vf_vec = lexicographic_value_iteration(momdp)
+
+    assert np.allclose(
+        vf_vec, np.array([
+            [1.0, 0.0, 0.0],
+            [9.0, 10.0, 10.0]
+        ])
+    )

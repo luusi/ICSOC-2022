@@ -1,5 +1,6 @@
 from typing import Generic, Mapping, Sequence, Set, Tuple
 
+from mdp_dp_rl.processes.mdp import MDP
 from mdp_dp_rl.processes.mp_funcs import (
     get_actions_for_states,
     get_all_states,
@@ -8,7 +9,7 @@ from mdp_dp_rl.processes.mp_funcs import (
 from mdp_dp_rl.utils.gen_utils import is_approx_eq, memoize, zip_dict_of_tuple
 from mdp_dp_rl.utils.generic_typevars import A, S
 
-from icsoc_2022.custom_types import MOMDPDynamics
+from icsoc_2022.custom_types import MDPDynamics, MOMDPDynamics
 
 
 @memoize
@@ -44,6 +45,7 @@ class MOMDP(Generic[S, A]):
         verify_momdp(info)
         d = {k: zip_dict_of_tuple(v) for k, v in info.items()}
         d1, d2 = zip_dict_of_tuple(d)
+        self.info = info
         self.all_states: Set[S] = get_all_states(info)
         self.state_action_dict: Mapping[S, Set[A]] = get_actions_for_states(info)
         self.transitions: Mapping[S, Mapping[A, Mapping[S, float]]] = {
@@ -51,8 +53,14 @@ class MOMDP(Generic[S, A]):
             for s, v in d1.items()
         }
         self.rewards: Mapping[S, Mapping[A, Tuple[float, ...]]] = d2
+        self.nb_rewards: int = self._get_nb_rewards(self.rewards)
         self.gamma: float = gamma
         self.terminal_states: Set[S] = self.get_terminal_states()
+
+    def _get_nb_rewards(
+        self, rewards: Mapping[S, Mapping[A, Tuple[float, ...]]]
+    ) -> int:
+        return len(next(iter(list(rewards.values())[0].values())))
 
     def get_sink_states(self) -> Set[S]:
         return {
@@ -77,3 +85,15 @@ class MOMDP(Generic[S, A]):
                 for r in rewards_vec
             )
         }
+
+    def get_mdp_i(self, reward_index: int) -> MDP:
+        """Get the MDP with only one source of reward whose index is specified by the argument."""
+        assert 0 <= reward_index < self.nb_rewards
+        mdp_dynamics: MDPDynamics = {}
+        for state, out_trans_by_action in self.info.items():
+            mdp_dynamics.setdefault(state, {})
+            for action, (next_state_dist, rewards) in out_trans_by_action.items():
+                reward = rewards[reward_index]
+                mdp_dynamics[state][action] = (next_state_dist, reward)
+
+        return MDP(mdp_dynamics, self.gamma)
