@@ -1,0 +1,8 @@
+digraph {
+	fake [style=invisible]
+	rankdir=LR
+	b1 [root=true shape=doublecircle]
+	fake -> b1 [style=bold]
+	b1 -> b1 [label="b, 1.0, (2.0, 2.0)"]
+	b1 -> b1 [label="act_b, 1.0, (0.0, 0.0)"]
+}
