@@ -3,7 +3,7 @@
 
 import pytest
 
-from icsoc_2022.momdp import MOMDP
+from icsoc_2022.lmdp import LMDP
 
 
 def test_momdp_with_rewards_not_tuples() -> None:
@@ -21,7 +21,7 @@ def test_momdp_with_rewards_not_tuples() -> None:
     }
 
     with pytest.raises(AssertionError, match="rewards.*is not a tuple!"):
-        MOMDP(data, 0.99)
+        LMDP(data, 0.99)
 
 
 def test_momdp_with_different_number_of_rewards() -> None:
@@ -39,7 +39,7 @@ def test_momdp_with_different_number_of_rewards() -> None:
     }
 
     with pytest.raises(AssertionError, match="expected number of rewards 1, got 2"):
-        MOMDP(data, 0.99)
+        LMDP(data, 0.99)
 
 
 def test_momdp_initialization() -> None:
@@ -56,6 +56,6 @@ def test_momdp_initialization() -> None:
         3: {"a": ({3: 1.0}, (0.0, 1.0)), "b": ({3: 1.0}, (0.0, 1.0))},
     }
 
-    momdp = MOMDP(data, 0.99)
+    momdp = LMDP(data, 0.99)
 
     assert momdp.rewards[3]["a"] == (0.0, 1.0)

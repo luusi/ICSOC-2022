@@ -1,33 +1,37 @@
 """Represent a target service."""
-from typing import Any, Mapping, Set, Tuple
+from collections import deque
+from typing import Any, Mapping, Set, Tuple, Deque
 
 from mdp_dp_rl.processes.mdp import MDP
 from mdp_dp_rl.utils.generic_typevars import A, S
+from pythomata import SimpleDFA
 from pythomata.core import DFA
-from sympy import Symbol
-from sympy.logic.boolalg import And, BooleanFunction, BooleanTrue, Or
+from pythomata.impl.symbolic import SymbolicDFA
+from sympy.logic.boolalg import BooleanTrue
 
-from icsoc_2022.constants import DEFAULT_GAMMA, COMPOSITION_MDP_UNDEFINED_ACTION
+from icsoc_2022.constants import DEFAULT_GAMMA
 from icsoc_2022.custom_types import MDPDynamics
 
 
-def guard_to_symbol(prop_formula: BooleanFunction) -> Set[str]:
-    """From guard to symbol."""
-    if isinstance(prop_formula, Symbol):
-        return {str(prop_formula)}
-    elif isinstance(prop_formula, And):
-        symbol_args = [arg for arg in prop_formula.args if isinstance(arg, Symbol)]
-        assert len(symbol_args) == 1
-        return {str(symbol_args[0])}
-    elif isinstance(prop_formula, Or):
-        operands_as_symbols = [
-            symb for arg in prop_formula.args for symb in guard_to_symbol(arg)
-        ]
-        operands_as_symbols = list(filter(lambda x: x is not None, operands_as_symbols))
-        assert len(operands_as_symbols) > 0
-        return set(operands_as_symbols)
-    # None case
-    return None
+def from_symbolic_automaton_to_declare_automaton(sym_automaton: SymbolicDFA, all_symbols: Set[str]) -> SimpleDFA:
+    states = sym_automaton.states
+    initial_state = sym_automaton.initial_state
+    accepting_states = sym_automaton.accepting_states
+    transition_function = {}
+
+    queue: Deque = deque()
+    discovered = set()
+    queue.append(initial_state)
+    while len(queue) != 0:
+        current_state = queue.popleft()
+        discovered.add(current_state)
+        for symbol in all_symbols:
+            next_state = sym_automaton.get_successor(current_state, {symbol: True})
+            transition_function.setdefault(current_state, {})[symbol] = next_state
+            if next_state not in discovered:
+                queue.append(next_state)
+                discovered.add(next_state)
+    return SimpleDFA(states, all_symbols, initial_state, accepting_states, transition_function)
 
 
 class MdpDfa(MDP):
@@ -46,19 +50,13 @@ class MdpDfa(MDP):
         self.all_actions = set(a for s, trans in info.items() for a, _ in trans.items())
 
 
-def mdp_from_dfa(dfa: DFA, reward: float = 2.0, gamma: float = DEFAULT_GAMMA) -> MdpDfa:
+def mdp_from_dfa(dfa: SimpleDFA, reward: float = 2.0, gamma: float = DEFAULT_GAMMA) -> MdpDfa:
+    assert isinstance(dfa, SimpleDFA)
     transition_function: MDPDynamics = {}
-    failure_state = _find_failure_state(dfa)
     for _start in dfa.states:
         for start, action, end in dfa.get_transitions_from(_start):
-            if end == failure_state:
-                symbol = COMPOSITION_MDP_UNDEFINED_ACTION
-                transition_function.setdefault(start, {}).setdefault(symbol, ({end: 1.0}, 0.0))
-            else:
-                symbols = guard_to_symbol(action)
-                for symbol in symbols:
-                    dest = ({end: 1.0}, reward if end in dfa.accepting_states else 0.0)
-                    transition_function.setdefault(start, {}).setdefault(symbol, dest)
+            dest = ({end: 1.0}, reward if end in dfa.accepting_states else 0.0)
+            transition_function.setdefault(start, {}).setdefault(action, dest)
 
     result = MdpDfa(transition_function, gamma)
     result.initial_state = dfa.initial_state

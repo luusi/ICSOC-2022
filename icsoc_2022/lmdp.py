@@ -1,4 +1,5 @@
-from typing import Generic, Mapping, Sequence, Set, Tuple, List
+from collections import deque
+from typing import Generic, Mapping, Sequence, Set, Tuple, List, Deque
 
 from mdp_dp_rl.processes.mdp import MDP
 from mdp_dp_rl.processes.mp_funcs import (
@@ -9,6 +10,7 @@ from mdp_dp_rl.processes.mp_funcs import (
 from mdp_dp_rl.utils.gen_utils import is_approx_eq, memoize, zip_dict_of_tuple
 from mdp_dp_rl.utils.generic_typevars import A, S
 
+from icsoc_2022.constants import OTHER_ACTION_SYMBOL
 from icsoc_2022.custom_types import MDPDynamics, MOMDPDynamics
 from icsoc_2022.dfa_target import MdpDfa
 from icsoc_2022.services import Service, build_system_service
@@ -42,7 +44,7 @@ def _is_momdp_dynamics_consistent(momdp_dynamics: MOMDPDynamics) -> None:
             ), f"expected number of rewards {nb_rewards}, got {len(rewards)}"
 
 
-class MOMDP(Generic[S, A]):
+class LMDP(Generic[S, A]):
     def __init__(self, info: MOMDPDynamics, gamma: float) -> None:
         verify_momdp(info)
         d = {k: zip_dict_of_tuple(v) for k, v in info.items()}
@@ -100,8 +102,76 @@ class MOMDP(Generic[S, A]):
 
         return MDP(mdp_dynamics, self.gamma)
 
-    def compute_composition_lmdp(
-            mdp_ltlf: MdpDfa, services: List[Service], with_all_initial_states: bool = False) -> MOMDP:
-        assert all(service.nb_rewards for service in services)
 
-        system_service = build_system_service(*services)
+def compute_composition_lmdp(
+    mdp_ltlf: MdpDfa, services: List[Service], with_all_initial_states: bool = False
+) -> LMDP:
+    assert all(service.nb_rewards for service in services)
+
+    system_service = build_system_service(*services)
+
+    transition_function: MOMDPDynamics = {}
+
+    visited = set()
+    to_be_visited = set()
+    queue: Deque = deque()
+
+    # add initial transitions
+    initial_state = (system_service.initial_state, mdp_ltlf.initial_state)
+    queue.append(initial_state)
+    to_be_visited.add(initial_state)
+    if with_all_initial_states:
+        for system_service_state in system_service.states:
+            if system_service_state == system_service.initial_state: continue
+            new_initial_state = (system_service_state, mdp_ltlf.initial_state)
+            queue.append(new_initial_state)
+            to_be_visited.add(new_initial_state)
+
+    while len(queue) > 0:
+        cur_state = queue.popleft()
+        to_be_visited.remove(cur_state)
+        visited.add(cur_state)
+        cur_system_state, cur_dfa_state = cur_state
+        trans_dist = {}
+
+        next_system_state_trans = system_service.transition_function[
+            cur_system_state
+        ].items()
+
+        # iterate over all available actions of system service
+        # in case symbol is in DFA available actions, progress DFA state component
+        for (symbol, service_id), next_state_info in next_system_state_trans:
+            next_system_state_distr, reward_vector = next_state_info
+            system_reward = reward_vector
+
+            # symbols not in the transition function of the target
+            # are considered as "other"; however, when we add the
+            # LMDP transition, we will label it with the original
+            # symbol.
+            if symbol not in mdp_ltlf.transitions[cur_dfa_state]:
+                assert OTHER_ACTION_SYMBOL in mdp_ltlf.transitions[cur_dfa_state]
+                dfa_symbol = OTHER_ACTION_SYMBOL
+            else:
+                dfa_symbol = symbol
+            symbol_to_next_dfa_states = mdp_ltlf.transitions[cur_dfa_state]
+            next_dfa_state_distr = symbol_to_next_dfa_states[dfa_symbol]
+            assert len(next_dfa_state_distr) == 1
+            next_dfa_state, _prob = list(next_dfa_state_distr.items())[0]
+            goal_reward = mdp_ltlf.rewards[cur_dfa_state][dfa_symbol]
+            final_rewards = (goal_reward, *system_reward)
+
+            for next_system_state, prob in next_system_state_distr.items():
+                assert prob > 0.0
+                next_state = (next_system_state, next_dfa_state)
+                trans_dist.setdefault((symbol, service_id), ({}, final_rewards))[0][
+                    next_state
+                ] = prob
+                if next_state not in visited and next_state not in to_be_visited:
+                    queue.append(next_state)
+                    to_be_visited.add(next_state)
+
+        transition_function[cur_state] = trans_dist
+
+    result = LMDP(transition_function, mdp_ltlf.gamma)
+    result.initial_state = initial_state
+    return result

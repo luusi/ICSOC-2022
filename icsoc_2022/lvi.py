@@ -10,7 +10,7 @@ from mdp_dp_rl.processes.mdp import MDP
 from numpy.typing import NDArray
 
 from icsoc_2022.custom_types import Action, State
-from icsoc_2022.momdp import MOMDP
+from icsoc_2022.lmdp import LMDP
 
 
 def value_iteration(
@@ -35,7 +35,7 @@ def value_iteration(
     return vf
 
 
-def lexicographic_value_iteration(momdp: MOMDP, tol: float = 1e-20):
+def lexicographic_value_iteration(momdp: LMDP, tol: float = 1e-20):
     nb_states = len(momdp.all_states)
     nb_rewards = momdp.nb_rewards
     gamma = momdp.gamma

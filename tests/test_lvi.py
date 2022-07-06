@@ -5,7 +5,7 @@ import numpy as np
 from mdp_dp_rl.processes.mdp import MDP
 
 from icsoc_2022.lvi import lexicographic_value_iteration, value_iteration
-from icsoc_2022.momdp import MOMDP
+from icsoc_2022.lmdp import LMDP
 
 
 def build_chain_mdp(n: int, gamma: float = 0.99) -> MDP:
@@ -50,7 +50,7 @@ def test_lvi() -> None:
         2: {"a": ({2: 1.0}, (0.0, 0.0)), "b": ({2: 1.0}, (0.0, 1.0))},
     }
 
-    momdp = MOMDP(data, 0.9)
+    momdp = LMDP(data, 0.9)
     vf_vec = lexicographic_value_iteration(momdp)
 
     assert np.allclose(

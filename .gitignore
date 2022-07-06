@@ -736,3 +736,15 @@ FodyWeavers.xsd
 *.tlog
 
 # End of https://www.toptal.com/developers/gitignore/api/linux,macos,windows,python,pycharm+all,vim,visualstudio,visualstudiocode,sublimetext
+
+examples/automaton
+examples/automaton.svg
+examples/mdp
+examples/mdp.svg
+examples/service_a
+examples/service_a.svg
+examples/service_b
+examples/service_b.svg
+examples/final_lmdp
+examples/final_lmdp.svg
+examples/declare-formulas/*
