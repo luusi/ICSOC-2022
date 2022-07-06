@@ -1,4 +1,4 @@
-from typing import Generic, Mapping, Sequence, Set, Tuple
+from typing import Generic, Mapping, Sequence, Set, Tuple, List
 
 from mdp_dp_rl.processes.mdp import MDP
 from mdp_dp_rl.processes.mp_funcs import (
@@ -10,6 +10,8 @@ from mdp_dp_rl.utils.gen_utils import is_approx_eq, memoize, zip_dict_of_tuple
 from mdp_dp_rl.utils.generic_typevars import A, S
 
 from icsoc_2022.custom_types import MDPDynamics, MOMDPDynamics
+from icsoc_2022.dfa_target import MdpDfa
+from icsoc_2022.services import Service, build_system_service
 
 
 @memoize
@@ -97,3 +99,9 @@ class MOMDP(Generic[S, A]):
                 mdp_dynamics[state][action] = (next_state_dist, reward)
 
         return MDP(mdp_dynamics, self.gamma)
+
+    def compute_composition_lmdp(
+            mdp_ltlf: MdpDfa, services: List[Service], with_all_initial_states: bool = False) -> MOMDP:
+        assert all(service.nb_rewards for service in services)
+
+        system_service = build_system_service(*services)

@@ -1,4 +1,6 @@
-"""Tests for the MOMDP module."""
+"""Test for the MOMDP module."""
+
+
 import pytest
 
 from icsoc_2022.momdp import MOMDP
