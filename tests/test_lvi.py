@@ -1,13 +1,10 @@
 """Tests for the LVI implementation."""
-from typing import Mapping, Tuple, Dict, Any
+from typing import Any, Dict, Tuple
 
 import numpy as np
-from mdp_dp_rl.algorithms.dp.dp_analytic import DPAnalytic
 from mdp_dp_rl.processes.mdp import MDP
-from mdp_dp_rl.utils.generic_typevars import S, A
 
-from icsoc_2022.lvi import value_iteration, lexicographic_value_iteration
-from icsoc_2022.custom_types import State, Action
+from icsoc_2022.lvi import lexicographic_value_iteration, value_iteration
 from icsoc_2022.momdp import MOMDP
 
 
