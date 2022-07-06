@@ -6,8 +6,9 @@ from mdp_dp_rl.algorithms.dp.dp_analytic import DPAnalytic
 from mdp_dp_rl.processes.mdp import MDP
 from mdp_dp_rl.utils.generic_typevars import S, A
 
-from icsoc_2022.lvi import value_iteration
+from icsoc_2022.lvi import value_iteration, lexicographic_value_iteration
 from icsoc_2022.custom_types import State, Action
+from icsoc_2022.momdp import MOMDP
 
 
 def build_chain_mdp(n: int, gamma: float = 0.99) -> MDP:
@@ -25,16 +26,16 @@ def build_chain_mdp(n: int, gamma: float = 0.99) -> MDP:
         out_transitions[LEFT] = ({max(0, i - 1): 1.0}, 0.0)
 
         # add transitions with action "right"
-        out_transitions[RIGHT] = ({i + 1: 1.0}, 1.0 if i == n-2 else 0.0)
+        out_transitions[RIGHT] = ({i + 1: 1.0}, 1.0 if i == n - 2 else 0.0)
 
         info[i] = out_transitions
 
-    info[n-1] = {NOP: ({n-1: 1.0}, 0.0)}
+    info[n - 1] = {NOP: ({n - 1: 1.0}, 0.0)}
     return MDP(info, gamma)
 
 
 def test_value_iteration() -> None:
-    """Run the tests for LVI."""
+    """Run the tests for value iteration."""
     n = 10
     gamma = 0.99
     mdp = build_chain_mdp(n)
@@ -42,3 +43,22 @@ def test_value_iteration() -> None:
     value_function = value_iteration(mdp)
     for i in range(n - 1):
         assert np.allclose(value_function[i], gamma ** (n - i - 2))
+
+
+def test_lvi() -> None:
+    """Run the tests for LVI."""
+    data = {
+        0: {"a": ({1: 1.0}, (1.0, 0.0)), "b": ({2: 1.0}, (0.0, 1.0))},
+        1: {"a": ({1: 1.0}, (0.0, 0.0)), "b": ({1: 1.0}, (0.0, 1.0))},
+        2: {"a": ({2: 1.0}, (0.0, 0.0)), "b": ({2: 1.0}, (0.0, 1.0))},
+    }
+
+    momdp = MOMDP(data, 0.9)
+    vf_vec = lexicographic_value_iteration(momdp)
+
+    assert np.allclose(
+        vf_vec, np.array([
+            [1.0, 0.0, 0.0],
+            [9.0, 10.0, 10.0]
+        ])
+    )
