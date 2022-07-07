@@ -122,7 +122,8 @@ def compute_composition_lmdp(
     to_be_visited.add(initial_state)
     if with_all_initial_states:
         for system_service_state in system_service.states:
-            if system_service_state == system_service.initial_state: continue
+            if system_service_state == system_service.initial_state:
+                continue
             new_initial_state = (system_service_state, mdp_ltlf.initial_state)
             queue.append(new_initial_state)
             to_be_visited.add(new_initial_state)

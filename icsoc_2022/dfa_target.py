@@ -13,7 +13,9 @@ from icsoc_2022.constants import DEFAULT_GAMMA
 from icsoc_2022.custom_types import MDPDynamics
 
 
-def from_symbolic_automaton_to_declare_automaton(sym_automaton: SymbolicDFA, all_symbols: Set[str]) -> SimpleDFA:
+def from_symbolic_automaton_to_declare_automaton(
+    sym_automaton: SymbolicDFA, all_symbols: Set[str]
+) -> SimpleDFA:
     states = sym_automaton.states
     initial_state = sym_automaton.initial_state
     accepting_states = sym_automaton.accepting_states
@@ -31,7 +33,9 @@ def from_symbolic_automaton_to_declare_automaton(sym_automaton: SymbolicDFA, all
             if next_state not in discovered:
                 queue.append(next_state)
                 discovered.add(next_state)
-    return SimpleDFA(states, all_symbols, initial_state, accepting_states, transition_function)
+    return SimpleDFA(
+        states, all_symbols, initial_state, accepting_states, transition_function
+    )
 
 
 class MdpDfa(MDP):
@@ -50,7 +54,9 @@ class MdpDfa(MDP):
         self.all_actions = set(a for s, trans in info.items() for a, _ in trans.items())
 
 
-def mdp_from_dfa(dfa: SimpleDFA, reward: float = 2.0, gamma: float = DEFAULT_GAMMA) -> MdpDfa:
+def mdp_from_dfa(
+    dfa: SimpleDFA, reward: float = 2.0, gamma: float = DEFAULT_GAMMA
+) -> MdpDfa:
     assert isinstance(dfa, SimpleDFA)
     transition_function: MDPDynamics = {}
     for _start in dfa.states:

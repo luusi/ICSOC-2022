@@ -7,7 +7,8 @@ from icsoc_2022.custom_types import (
     Action,
     MDPDynamics,
     State,
-    TransitionFunction, MOMDPDynamics,
+    TransitionFunction,
+    MOMDPDynamics,
 )
 
 
@@ -96,7 +97,7 @@ class Service:
             ), f"state {start_state} is not in the set of states"
             for action, (next_state_dist, rewards) in transitions_by_action.items():
                 assert (
-                        action in self.actions
+                    action in self.actions
                 ), f"action {action} is not in the set of actions"
                 assert sum(next_state_dist.values()) == 1.0
                 for next_state, prob in next_state_dist.items():
@@ -131,7 +132,7 @@ def build_deterministic_service_from_transitions(
         for action, next_state in transitions_by_action.items():
             actions.add(action)
             states.add(next_state)
-            new_transition_function[start_state][action] = ({next_state: 1.0}, (0.0, ))
+            new_transition_function[start_state][action] = ({next_state: 1.0}, (0.0,))
 
     unreachable_final_states = final_states.difference(states)
     assert (

@@ -51,11 +51,8 @@ def test_lvi() -> None:
     }
 
     momdp = LMDP(data, 0.9)
-    vf_vec = lexicographic_value_iteration(momdp)
+    vf_result, _ = lexicographic_value_iteration(momdp)
 
-    assert np.allclose(
-        vf_vec, np.array([
-            [1.0, 0.0, 0.0],
-            [9.0, 10.0, 10.0]
-        ])
-    )
+    assert np.allclose(vf_result[0], [1.0, 9.0])
+    assert np.allclose(vf_result[1], [0.0, 10.0])
+    assert np.allclose(vf_result[2], [0.0, 10.0])
