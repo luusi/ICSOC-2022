@@ -44,13 +44,13 @@ def render_target(target: Target, format=_default_format):
     render_digraph(digraph, format)
 
 
-def render_mdp_dfa(mdp: MdpDfa, format=_default_format):
-    digraph = mdp_to_graphviz(mdp)
+def render_mdp_dfa(mdp: MdpDfa, format=_default_format, **kwargs):
+    digraph = mdp_to_graphviz(mdp, **kwargs)
     render_digraph(digraph)
 
 
-def render_composition_mdp(mdp: MDP, format=_default_format):
-    digraph = mdp_to_graphviz(mdp)
+def render_composition_mdp(mdp: MDP, format=_default_format, **kwargs):
+    digraph = mdp_to_graphviz(mdp, **kwargs)
     render_digraph(digraph)
 
 

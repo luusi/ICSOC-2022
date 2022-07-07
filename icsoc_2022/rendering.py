@@ -89,12 +89,14 @@ def mdp_to_graphviz(
     mdp: MDP,
     state2str: Callable[[State], str] = lambda x: str(x),
     action2str: Callable[[Action], str] = lambda x: str(x),
+    simplified: bool = False
 ) -> Digraph:
     """
     Translate a composition-MDP instance into a Digraph.
     :param mdp: the composition-MDP object, obtained from composition.composition_mdp
     :param state2str: a callable that transforms states into strings
     :param action2str: a callable that transforms actions into strings
+    :param simplified: don't print failure actions
     :return: the graphviz.Digraph object
     """
     graph = Digraph(format="svg")
@@ -102,6 +104,8 @@ def mdp_to_graphviz(
     graph.attr(rankdir="LR")
 
     for state in mdp.all_states:
+        if simplified and state in mdp.get_terminal_states():
+            continue
         shape = "doubleoctagon" if state in mdp.get_terminal_states() else "box"
         if state == mdp.initial_state:
             graph.node(state2str(state), root="true", shape=shape)
@@ -115,6 +119,8 @@ def mdp_to_graphviz(
         for action, next_states in outgoing.items():
             reward = mdp.rewards.get(start, {}).get(action, 0.0)
             for end, prob in next_states.items():
+                if simplified and end in mdp.get_terminal_states():
+                    continue
                 label = f"{action2str(action)},{reward},{prob}"
                 graph.edge(
                     state2str(start),
