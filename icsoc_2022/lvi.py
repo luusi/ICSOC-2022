@@ -27,13 +27,14 @@ def value_iteration(
     while epsilon >= tol:
         new_vf = np.zeros(nb_states)
         for s, v in mdp.rewards.items():
-            new_vf[state2id[s]] = max(
+            new_value = max(
                 r
                 + mdp.gamma
                 * sum(p * vf[state2id[s1]] for s1, p in mdp.transitions[s][a].items())
                 for a, r in v.items()
                 if allowed_actions is None or a in allowed_actions[s]
             )
+            new_vf[state2id[s]] = new_value
         epsilon = np.max(np.abs(new_vf - vf))
         vf = new_vf
     # inefficient, but practical
@@ -63,12 +64,10 @@ def lexicographic_value_iteration(
     nb_states = len(momdp.all_states)
     id2state = sorted(momdp.all_states)
     nb_rewards = momdp.nb_rewards
-    gamma = momdp.gamma
-    tolerance_gamma_coefficient = gamma / (1.0 - gamma)
     vf_vec = np.zeros((nb_rewards, nb_states))
     prev_vf_vec = vf_vec
     started = False
-    tolerance = tol * tolerance_gamma_coefficient
+    tolerance = tol
     actions = None
     while not started or np.max(np.abs(vf_vec - prev_vf_vec)) > tolerance:
         started = True
@@ -77,12 +76,13 @@ def lexicographic_value_iteration(
             mdp_i = momdp.get_mdp_i(i)
             print(f"Computing optimal value function for objective {i}...")
             vf_i = value_iteration(
-                mdp_i, tolerance, id2state=id2state, allowed_actions=None
+                mdp_i, tolerance, id2state=id2state, allowed_actions=actions
             )
             vf_vec[i, :] = np.array([vf_i[s] for s in id2state])
             actions = get_optimal_actions(
                 mdp_i, cast(Mapping[State, float], vf_i), allowed_actions=actions
             )
+            q_i = get_act_value_func_dict_from_value_func(mdp_i, vf_i, mdp_i.gamma)
     # inefficient, but practical
     result_vf = {
         id2state[state_id]: vf_vec[:, state_id] for state_id in range(vf_vec.shape[1])

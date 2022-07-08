@@ -182,7 +182,7 @@ def build_system_service(*services: Service) -> Service:
     :param services: a list of service instances
     :return: the system service
     """
-    assert len(services) >= 2, "at least two services"
+    # assert len(services) >= 2, "at least two services"
 
     new_states: Set[State] = set()
     new_final_states: Set[State] = set()

@@ -1,5 +1,5 @@
 from collections import deque
-from typing import Generic, Mapping, Sequence, Set, Tuple, List, Deque
+from typing import Generic, Mapping, Sequence, Set, Tuple, List, Deque, Optional
 
 from mdp_dp_rl.processes.mdp import MDP
 from mdp_dp_rl.processes.mp_funcs import (
@@ -9,8 +9,10 @@ from mdp_dp_rl.processes.mp_funcs import (
 )
 from mdp_dp_rl.utils.gen_utils import is_approx_eq, memoize, zip_dict_of_tuple
 from mdp_dp_rl.utils.generic_typevars import A, S
+from pythomata import SimpleDFA
+from pythomata.core import DFA
 
-from icsoc_2022.constants import OTHER_ACTION_SYMBOL
+from icsoc_2022.constants import OTHER_ACTION_SYMBOL, DONE_ACTION, SINK_STATE, SINK_ACTION
 from icsoc_2022.custom_types import MDPDynamics, MOMDPDynamics
 from icsoc_2022.dfa_target import MdpDfa
 from icsoc_2022.services import Service, build_system_service
@@ -45,8 +47,14 @@ def _is_momdp_dynamics_consistent(momdp_dynamics: MOMDPDynamics) -> None:
 
 
 class LMDP(Generic[S, A]):
-    def __init__(self, info: MOMDPDynamics, gamma: float) -> None:
+    def __init__(self, info: MOMDPDynamics, gamma: Optional[float] = None, gammas: Optional[Sequence[float]] = None) -> None:
         verify_momdp(info)
+        self._nb_objectives = self._get_nb_objectives(info)
+        assert (gamma is not None) != (gammas is not None), "either one discount factor or a list of discount factors is required"
+        assert not gammas or len(gammas) == self._nb_objectives, f"gammas has to be of length equal of the number of objectives, {self._nb_objectives}; got {len(gammas)}"
+        self.gamma = gamma
+        self.gammas = gammas
+
         d = {k: zip_dict_of_tuple(v) for k, v in info.items()}
         d1, d2 = zip_dict_of_tuple(d)
         self.info = info
@@ -57,14 +65,18 @@ class LMDP(Generic[S, A]):
             for s, v in d1.items()
         }
         self.rewards: Mapping[S, Mapping[A, Tuple[float, ...]]] = d2
-        self.nb_rewards: int = self._get_nb_rewards(self.rewards)
+        self.nb_rewards: int = self._nb_objectives
         self.gamma: float = gamma
         self.terminal_states: Set[S] = self.get_terminal_states()
 
-    def _get_nb_rewards(
-        self, rewards: Mapping[S, Mapping[A, Tuple[float, ...]]]
+    def get_discount_factor_i(self, i: int):
+        assert 0 <= i < self._nb_objectives
+        return self.gammas[i] if self.gammas is not None else self.gamma
+
+    def _get_nb_objectives(
+        self, info: MOMDPDynamics
     ) -> int:
-        return len(next(iter(list(rewards.values())[0].values())))
+        return len(next(iter(list(info.values())[0].values()))[1])
 
     def get_sink_states(self) -> Set[S]:
         return {
@@ -100,31 +112,32 @@ class LMDP(Generic[S, A]):
                 reward = rewards[reward_index]
                 mdp_dynamics[state][action] = (next_state_dist, reward)
 
-        return MDP(mdp_dynamics, self.gamma)
+        return MDP(mdp_dynamics, self.get_discount_factor_i(reward_index))
 
 
 def compute_composition_lmdp(
-    mdp_ltlf: MdpDfa, services: List[Service], with_all_initial_states: bool = False
+    dfa: SimpleDFA, services: List[Service], gamma: float, with_all_initial_states: bool = False,
 ) -> LMDP:
     assert all(service.nb_rewards for service in services)
 
     system_service = build_system_service(*services)
 
     transition_function: MOMDPDynamics = {}
+    nb_rewards: int
 
     visited = set()
     to_be_visited = set()
     queue: Deque = deque()
 
     # add initial transitions
-    initial_state = (system_service.initial_state, mdp_ltlf.initial_state)
+    initial_state = (system_service.initial_state, dfa.initial_state)
     queue.append(initial_state)
     to_be_visited.add(initial_state)
     if with_all_initial_states:
         for system_service_state in system_service.states:
             if system_service_state == system_service.initial_state:
                 continue
-            new_initial_state = (system_service_state, mdp_ltlf.initial_state)
+            new_initial_state = (system_service_state, dfa.initial_state)
             queue.append(new_initial_state)
             to_be_visited.add(new_initial_state)
 
@@ -144,22 +157,22 @@ def compute_composition_lmdp(
         for (symbol, service_id), next_state_info in next_system_state_trans:
             next_system_state_distr, reward_vector = next_state_info
             system_reward = reward_vector
+            nb_rewards = len(reward_vector)
 
             # symbols not in the transition function of the target
             # are considered as "other"; however, when we add the
             # LMDP transition, we will label it with the original
             # symbol.
-            if symbol not in mdp_ltlf.transitions[cur_dfa_state]:
-                assert OTHER_ACTION_SYMBOL in mdp_ltlf.transitions[cur_dfa_state]
+            if symbol not in dfa.transition_function[cur_dfa_state]:
+                assert OTHER_ACTION_SYMBOL in dfa.transition_function[cur_dfa_state]
                 dfa_symbol = OTHER_ACTION_SYMBOL
             else:
                 dfa_symbol = symbol
-            symbol_to_next_dfa_states = mdp_ltlf.transitions[cur_dfa_state]
-            next_dfa_state_distr = symbol_to_next_dfa_states[dfa_symbol]
-            assert len(next_dfa_state_distr) == 1
-            next_dfa_state, _prob = list(next_dfa_state_distr.items())[0]
-            goal_reward = mdp_ltlf.rewards[cur_dfa_state][dfa_symbol]
-            final_rewards = (goal_reward, *system_reward)
+            symbol_to_next_dfa_states = dfa.transition_function[cur_dfa_state]
+            next_dfa_state = symbol_to_next_dfa_states[dfa_symbol]
+            # goal reward given only when done is executed
+            goal_reward = 1.0 if dfa.is_accepting(cur_dfa_state) else 0.0
+            final_rewards = (0.0, *system_reward)
 
             for next_system_state, prob in next_system_state_distr.items():
                 assert prob > 0.0
@@ -171,8 +184,15 @@ def compute_composition_lmdp(
                     queue.append(next_state)
                     to_be_visited.add(next_state)
 
+            # add done action
+            goal_reward = 1.0 if dfa.is_accepting(cur_dfa_state) else 0.0
+            trans_dist[DONE_ACTION] = ({((SINK_STATE, ), -1.0): 1.0}, (goal_reward, *[0.0] * nb_rewards))
+
         transition_function[cur_state] = trans_dist
 
-    result = LMDP(transition_function, mdp_ltlf.gamma)
+    # add sink action from sink state
+    transition_function[((SINK_STATE, ), -1.0)] = {SINK_ACTION: ({((SINK_STATE,), -1.0): 1.0}, (0.0, ) * (nb_rewards + 1))}
+
+    result = LMDP(transition_function, gammas=(gamma, *[gamma] * nb_rewards))
     result.initial_state = initial_state
     return result
