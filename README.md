@@ -29,9 +29,19 @@ pip install -e .
   At [this page](https://www.graphviz.org/download/) you will
   find the releases for all the supported platform.
 
+- Install [Lydia](https://github.com/whitemech/lydia). 
+  We suggest to [use the Docker installation](https://github.com/whitemech/lydia#use-the-docker-image).
+
 ## How to run the code
 
-TODO
+- Run a Jupyter Notebook server:
+
+```
+jupyter-notebook
+```
+
+- Open the link and navigate through `docs/notebooks` and run the notebook `01-electric-motor-production.ipynb` to
+  replicate the experiment.
 
 ## License
 

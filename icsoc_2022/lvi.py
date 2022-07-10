@@ -3,6 +3,7 @@ Code for Lexicographic Value Iteration (LVI).
 
 Paper: https://www.aaai.org/ocs/index.php/AAAI/AAAI15/paper/viewFile/9471/9773
 """
+import math
 from typing import AbstractSet, Dict, Mapping, Optional, Set, cast, Sequence, Tuple
 
 import numpy as np
@@ -63,12 +64,10 @@ def lexicographic_value_iteration(
     nb_states = len(momdp.all_states)
     id2state = sorted(momdp.all_states)
     nb_rewards = momdp.nb_rewards
-    gamma = momdp.gamma
-    tolerance_gamma_coefficient = gamma / (1.0 - gamma)
     vf_vec = np.zeros((nb_rewards, nb_states))
     prev_vf_vec = vf_vec
     started = False
-    tolerance = tol * tolerance_gamma_coefficient
+    tolerance = tol
     actions = None
     while not started or np.max(np.abs(vf_vec - prev_vf_vec)) > tolerance:
         started = True
@@ -77,7 +76,7 @@ def lexicographic_value_iteration(
             mdp_i = momdp.get_mdp_i(i)
             print(f"Computing optimal value function for objective {i}...")
             vf_i = value_iteration(
-                mdp_i, tolerance, id2state=id2state, allowed_actions=None
+                mdp_i, tolerance, id2state=id2state, allowed_actions=actions
             )
             vf_vec[i, :] = np.array([vf_i[s] for s in id2state])
             actions = get_optimal_actions(
@@ -104,8 +103,9 @@ def get_optimal_actions(
             if (allowed_actions is None or action in allowed_actions[s])
         ]
         maximum_value = max(filtered_q_values, key=lambda pair: pair[1])[1]
+        # we use math.isclose due to numerical instability
         optimal_actions_by_state[s] = {
-            action for action, value in filtered_q_values if value == maximum_value
+            action for action, value in filtered_q_values if math.isclose(value, maximum_value, abs_tol=np.finfo(float).eps * 10.0)
         }
     return optimal_actions_by_state
 

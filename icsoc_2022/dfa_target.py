@@ -55,7 +55,7 @@ class MdpDfa(MDP):
 
 
 def mdp_from_dfa(
-    dfa: SimpleDFA, reward: float = 2.0, gamma: float = DEFAULT_GAMMA
+    dfa: SimpleDFA, reward: float = 1.0, gamma: float = DEFAULT_GAMMA
 ) -> MdpDfa:
     assert isinstance(dfa, SimpleDFA)
     transition_function: MDPDynamics = {}
